@@ -1,0 +1,16 @@
+{
+  "environment": "TEST",
+  "comp_num": 2,
+  "plant_code": "2",
+  "cust_code": "NIA01",
+  "ack_addr_num": 0,
+  "item_identifier": "VN",
+  "item_map": {},
+  "uom_map": {"EA": "EACH", "TH": "THOU", "IM": "IMPR"},
+  "price_unit_map": {"EA": "EACH", "TH": "THOU", "IM": "IMPR"},
+  "allowed_as2_sender": null,
+  "allowed_as2_receiver": null,
+  "allowed_isa_sender": null,
+  "allowed_isa_receiver": null,
+  "allow_blanket_orders": false
+}
