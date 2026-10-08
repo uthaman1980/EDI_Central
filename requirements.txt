@@ -1,2 +1,4 @@
 requests>=2.31,<3
 pyodbc>=5,<6
+Flask>=3,<4
+waitress>=3,<4

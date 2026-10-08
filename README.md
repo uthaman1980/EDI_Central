@@ -27,6 +27,22 @@ For unencrypted but verified AS2 messages, use `"decryption_status": "not_encryp
 4. Run a preview: `python -m niagara_edi inbox/example.edi --config config.json`. The adjacent AS2 receipt is required even in preview.
 5. After reviewing the payload, run `python -m niagara_edi --watch inbox --config config.json --submit`. Run as a managed background service. Use TEST and a controlled test PO before LIVE.
 
+## Admin dashboard
+
+The read-only dashboard shows today's file and completion counts, open exceptions, a seven-day activity chart, searchable file history, Radius Sales Order and Shipping Request numbers, and the full event timeline and latest error for each file. It refreshes every 30 seconds. All timestamps shown in the UI are UTC. The file list is paginated and searchable across the full history.
+
+Set `DASHBOARD_USER` and `DASHBOARD_PASSWORD` in the dashboard process environment, then start it separately from the file watcher:
+
+```powershell
+$env:DASHBOARD_USER = 'edi-admin'
+$env:DASHBOARD_PASSWORD = '<strong unique password>'
+python -m niagara_edi --dashboard --state state/orders.sqlite3
+```
+
+Open `http://127.0.0.1:8088/` locally. The dashboard binds to loopback by default and uses HTTP Basic authentication. To expose it to other administrators, run it behind an HTTPS reverse proxy with network access controls; do not expose the HTTP listener directly to the Internet. Both the watcher and dashboard must use the same `--state` path. The dashboard has no posting or retry controls.
+
+The watcher records AS2 receipt, EDI parsing, mapping, Sales Order, Shipping Request, and error events in SQLite. Files without a gateway receipt stay in the inbox as **Awaiting AS2 receipt**. Successful files move to `archive/`; rejected or uncertain files move to `failed/` for operator review. This prevents automatic reposting of an uncertain order. Manual one-file runs also appear in the dashboard.
+
 The SQLite state file `state/orders.sqlite3` stores the PO business key, input digest, posting state, and Radius numbers. Completed replays return the existing numbers. A changed PO under the same PO/release or a failure after posting begins is held for operator reconciliation, since blindly retrying a timed-out POST could create a duplicate. The same applies when Sales Order creation succeeds and Shipping Request creation does not: inspect the Radius Sales Order and shipping requests, then reconcile the state before reprocessing. Preserve the original EDI and gateway receipt for audit.
 
 ## Mapping details
