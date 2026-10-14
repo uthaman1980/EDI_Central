@@ -1,0 +1,2 @@
+# Fixed-width fixtures intentionally retain padding and their original bytes.
+tests/fixtures/synthetic_fixed_850.txt -text whitespace=-blank-at-eol

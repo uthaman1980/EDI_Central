@@ -1,0 +1,14 @@
+{% extends "admin_base.html" %}
+{% block title %}Customers{% endblock %}
+{% block breadcrumb %}Customers{% endblock %}
+{% block content %}
+<div class="heading-row"><div><div class="eyebrow">CUSTOMER SETUP</div><h1>Inbound customer routes</h1><p>Set how each customer sends an 850 and how its values map to Radius.</p></div><div class="form-actions"><a class="primary-button" href="{{ url_for('new_customer', kind='van') }}">Add VAN customer</a><a class="refresh-button" href="{{ url_for('new_customer', kind='direct') }}">Add direct customer</a></div></div>
+<section class="panel admin-panel"><div class="panel-head"><div><div class="eyebrow">ROUTING</div><h2>Configured customers</h2></div><span class="table-count">{{ entries|length }} profiles</span></div>
+  <div class="table-scroll"><table><thead><tr><th>CUSTOMER</th><th>ROUTING ID</th><th>INPUT FORMAT</th><th>RADIUS CUSTOMER</th><th>STATUS</th><th></th></tr></thead><tbody>
+  {% for kind, key, profile in entries %}<tr><td class="file-name">{{ profile.display_name or key }}</td><td>{{ key }}</td><td>{{ 'VAN · Radius transposed TXT' if kind == 'van' else 'Direct · X12 850 (' ~ ('AS2' if profile.get('transport', 'as2') == 'as2' else 'file drop') ~ ')' }}</td><td>{{ profile.cust_code }}</td><td><span class="badge {{ 'badge-complete' if profile.get('enabled', True) else 'badge-previewed' }}">{{ 'Enabled' if profile.get('enabled', True) else 'Draft / disabled' }}</span></td><td><a class="row-arrow" href="{{ url_for('edit_customer', kind=kind, key=key) }}" aria-label="Edit {{ key }}">Edit</a></td></tr>
+  {% else %}<tr><td colspan="6" class="empty">No customers configured. Add one to begin.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+<div class="admin-info-grid"><section class="panel admin-panel"><div class="panel-head"><div><div class="eyebrow">PHASE 1</div><h2>Direct customer 850</h2></div></div><p>X12 004010 file with a verified AS2 gateway receipt. Route by ISA sender and check AS2 sender, receiver, and ISA receiver.</p></section><section class="panel admin-panel"><div class="panel-head"><div><div class="eyebrow">PHASE 2</div><h2>VAN transposed file</h2></div></div><p>Radius fixed-width <code>EDI850Inbound</code> TXT. Route by <code>SOHEAD.CustCode</code> and validate the order, shipping, and control records.</p></section></div>
+<section class="panel admin-panel connection-panel"><div class="panel-head"><div><div class="eyebrow">TARGET</div><h2>Radius environment</h2></div><span class="badge {{ 'badge-complete' if environment == 'TEST' else 'badge-attention' }}">{{ environment }}</span></div><p>Configured REST endpoint: <code>{{ test_url }}</code></p><p>TEST address lookup DSN: <code>Radius_NewLive</code>. Database password is supplied through <code>RADIUS_DB_PASS</code>.</p></section>
+{% endblock %}

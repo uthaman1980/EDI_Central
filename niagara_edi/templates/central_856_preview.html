@@ -1,0 +1,9 @@
+{% extends "admin_base.html" %}
+{% block title %}Preview Radius 856{% endblock %}
+{% block breadcrumb %}Preview Radius 856{% endblock %}
+{% block content %}
+<div class="heading-row"><div><div class="eyebrow">OUTBOUND 856</div><h1>Preview Radius shipping references</h1><p>Read a Standard Outbound 856 format 1 sample and validate its record structure and totals.</p></div></div>
+<section class="panel admin-panel"><form method="post" enctype="multipart/form-data" class="saved-submit"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label>Radius 856 sample<input type="file" name="file" accept=".txt" required></label><button class="primary-button" type="submit">Preview references</button></form><p>This preview reads the uploaded sample in memory. It does not publish a file or confirm VAN pickup.</p></section>
+{% if error %}<section class="panel admin-panel"><h2>Sample validation failed</h2><p>{{ error }}</p></section>{% endif %}
+{% if documents %}<section class="panel admin-panel"><div class="panel-head"><h2>{{ filename }} — {{ documents|length }} shipping notes</h2></div><div class="table-scroll"><table><thead><tr><th>CUSTOMER</th><th>COMPANY / PLANT</th><th>BOL</th><th>SR / LINE</th><th>SO / LINE</th><th>CUSTOMER PO</th></tr></thead><tbody>{% for d in documents %}{% for l in d.lines %}<tr><td>{{ d.customer }}</td><td>{{ d.company }} / {{ d.plant }}</td><td>{{ d.bol }}</td><td>{{ d.shipreq }} / {{ l.shipreq_line }}</td><td>{{ l.so }} / {{ l.so_line }}</td><td>{{ l.po }}</td></tr>{% endfor %}{% endfor %}</tbody></table></div></section>{% endif %}
+{% endblock %}

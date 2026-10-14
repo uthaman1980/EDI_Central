@@ -4,19 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="refresh" content="30">
-  <title>Niagara EDI · Executive overview</title>
+  <title>Radius 850 · Operations overview</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <a class="brand" href="{{ url_for('index') }}"><span class="brand-mark">N</span><span><strong>NIAGARA</strong><small>EDI CONTROL CENTER</small></span></a>
+      <a class="brand" href="{{ url_for('index') }}"><img class="brand-logo" src="{{ url_for('static', filename='fsm_logo.png') }}" alt="Five Star"><span><strong>RADIUS</strong><small>EDI CONTROL CENTER</small></span></a>
       <div class="side-caption">WORKSPACE</div>
       <nav class="nav">
         <a class="nav-link active" href="{{ url_for('index') }}"><span class="nav-icon">◫</span> Overview</a>
         <a class="nav-link" href="{{ url_for('index', status='all') }}#files"><span class="nav-icon">▤</span> Inbound files</a>
         <a class="nav-link" href="{{ url_for('index') }}#activity"><span class="nav-icon">◷</span> Activity log</a>
         <a class="nav-link" href="{{ url_for('index', status='attention') }}#files"><span class="nav-icon">⚑</span> Needs review {% if exceptions %}<span class="nav-count">{{ exceptions }}</span>{% endif %}</a>
+        <a class="nav-link" href="{{ url_for('customers') }}">Customers</a>
+        <a class="nav-link" href="{{ url_for('inbound') }}">Process a file</a>
       </nav>
       <div class="sidebar-bottom"><span class="system-dot"></span><span>Operations view online</span></div>
     </aside>
@@ -27,10 +29,10 @@
         <div class="top-actions"><span class="refresh-note">Refreshes every 30s</span><a class="refresh-button" href="{{ url_for('index', status=status, q=query) }}">↻ <span>Refresh</span></a><span class="avatar">AD</span></div>
       </header>
       <div class="content">
-        <div class="heading-row"><div><div class="eyebrow">EXECUTIVE OVERVIEW</div><h1>EDI operations at a glance</h1><p>Niagara purchase orders flowing into Radius Sales Orders and Shipping Requests.</p></div><div class="updated"><span class="live-dot"></span> Updated {{ updated }}</div></div>
+        <div class="heading-row"><div><div class="eyebrow">EXECUTIVE OVERVIEW</div><h1>EDI operations at a glance</h1><p>Direct customer and VAN files flowing into Radius Sales Orders and Shipping Requests.</p></div><div class="updated"><span class="live-dot"></span> Updated {{ updated }}</div></div>
 
         <section class="metrics" aria-label="Operational metrics">
-          <article class="metric-card"><div class="metric-top"><span>Files received today</span><span class="metric-icon blue">▤</span></div><div class="metric-value">{{ total }}</div><div class="metric-footer">Inbound AS2 handoffs · UTC day</div></article>
+          <article class="metric-card"><div class="metric-top"><span>Files received today</span><span class="metric-icon blue">▤</span></div><div class="metric-value">{{ total }}</div><div class="metric-footer">Direct and VAN inbound · UTC day</div></article>
           <article class="metric-card"><div class="metric-top"><span>Completed today</span><span class="metric-icon green">✓</span></div><div class="metric-value">{{ completed }}</div><div class="metric-footer"><span class="positive">{{ completion_rate }}% completion</span> of today's files</div></article>
           <article class="metric-card"><div class="metric-top"><span>Needs attention</span><span class="metric-icon amber">!</span></div><div class="metric-value">{{ exceptions }}</div><div class="metric-footer">Rejected or requires reconciliation</div></article>
           <article class="metric-card"><div class="metric-top"><span>In progress</span><span class="metric-icon violet">◷</span></div><div class="metric-value">{{ active }}</div><div class="metric-footer">Received, verifying, or posting</div></article>
@@ -38,17 +40,17 @@
 
         <div class="middle-grid">
           <section class="panel trend-panel"><div class="panel-head"><div><div class="eyebrow">VOLUME & THROUGHPUT</div><h2>7-day file activity</h2></div><div class="legend"><span class="legend-total"></span> Received <span class="legend-done"></span> Completed</div></div><div class="chart"><div class="chart-lines"><span></span><span></span><span></span><span></span></div>{% for point in chart %}<div class="chart-column"><div class="bars"><div class="bar-total" style="height:{{ point.height }}%" title="{{ point.total }} received"></div><div class="bar-done" style="height:{{ point.done_height }}%" title="{{ point.done }} completed"></div></div><div class="chart-label">{{ point.label }}</div></div>{% endfor %}</div></section>
-          <section class="panel status-panel"><div class="panel-head"><div><div class="eyebrow">WORKFLOW</div><h2>Processing pipeline</h2></div></div><div class="pipeline"><div class="pipeline-row"><span class="step-number">01</span><span><strong>AS2 handoff</strong><small>Signature, decryption & MIC receipt</small></span><span class="step-line"></span></div><div class="pipeline-row"><span class="step-number">02</span><span><strong>EDI validation</strong><small>850 envelope, PO & line checks</small></span><span class="step-line"></span></div><div class="pipeline-row"><span class="step-number">03</span><span><strong>Radius Sales Order</strong><small>Header and order lines</small></span><span class="step-line"></span></div><div class="pipeline-row"><span class="step-number">04</span><span><strong>Shipping Request</strong><small>Shipment linked to Sales Order</small></span></div></div></section>
+          <section class="panel status-panel"><div class="panel-head"><div><div class="eyebrow">WORKFLOW</div><h2>Processing pipeline</h2></div></div><div class="pipeline"><div class="pipeline-row"><span class="step-number">01</span><span><strong>Inbound file</strong><small>AS2 receipt or VAN file validation</small></span><span class="step-line"></span></div><div class="pipeline-row"><span class="step-number">02</span><span><strong>EDI validation</strong><small>850 envelope, PO & line checks</small></span><span class="step-line"></span></div><div class="pipeline-row"><span class="step-number">03</span><span><strong>Radius Sales Order</strong><small>Header and order lines</small></span><span class="step-line"></span></div><div class="pipeline-row"><span class="step-number">04</span><span><strong>Shipping Request</strong><small>Shipment linked to Sales Order</small></span></div></div></section>
         </div>
 
         <section class="panel files-panel" id="files"><div class="panel-head files-head"><div><div class="eyebrow">INBOUND CONTROL</div><h2>Incoming files</h2><p>All recorded files, newest first. Select a row to inspect its processing history.</p></div><span class="table-count">{{ matching }} matching</span></div>
           <form class="filter-bar" method="get"><div class="filter-tabs"><a class="filter-tab {% if status == 'all' %}selected{% endif %}" href="{{ url_for('index', q=query) }}#files">All</a><a class="filter-tab {% if status == 'complete' %}selected{% endif %}" href="{{ url_for('index', status='complete', q=query) }}#files">Completed</a><a class="filter-tab {% if status == 'processing' %}selected{% endif %}" href="{{ url_for('index', status='processing', q=query) }}#files">Processing</a><a class="filter-tab {% if status == 'attention' %}selected{% endif %}" href="{{ url_for('index', status='attention', q=query) }}#files">Needs review</a><a class="filter-tab {% if status == 'rejected' %}selected{% endif %}" href="{{ url_for('index', status='rejected', q=query) }}#files">Rejected</a></div><div class="search"><input type="hidden" name="status" value="{{ status }}"><input aria-label="Search files, PO numbers, and errors" name="q" value="{{ query }}" placeholder="Search file or PO"><button type="submit">Search</button></div></form>
-          <div class="table-scroll"><table><thead><tr><th>FILE / PURCHASE ORDER</th><th>RECEIVED</th><th>STATUS</th><th>STAGE</th><th>SALES ORDER</th><th>SHIP REQUEST</th><th></th></tr></thead><tbody>{% for file in files %}<tr><td><a class="file-name" href="{{ url_for('file_detail', file_id=file.id) }}">{{ file.filename }}</a><span class="subcell">{{ file.po_refs|join(', ') if file.po_refs else 'PO pending' }}</span></td><td><span class="date-cell">{{ file.received_at[:16].replace('T', ' ') }}</span><span class="subcell">UTC</span></td><td><span class="badge badge-{{ file.status }}"><span class="badge-dot"></span>{{ file.status_label }}</span></td><td>{{ file.stage }}</td><td>{{ file.so_numbers|join(', ') if file.so_numbers else '—' }}</td><td>{{ file.shipreq_numbers|join(', ') if file.shipreq_numbers else '—' }}</td><td><a class="row-arrow" aria-label="View {{ file.filename }} details" href="{{ url_for('file_detail', file_id=file.id) }}">↗</a></td></tr>{% else %}<tr><td colspan="7" class="empty">No files match this view. Incoming AS2 handoffs will appear here.</td></tr>{% endfor %}</tbody></table></div>
+          <div class="table-scroll"><table><thead><tr><th>FILE / PURCHASE ORDER</th><th>RECEIVED</th><th>STATUS</th><th>STAGE</th><th>SALES ORDER</th><th>SHIP REQUEST</th><th></th></tr></thead><tbody>{% for file in files %}<tr><td><a class="file-name" href="{{ url_for('file_detail', file_id=file.id) }}">{{ file.filename }}</a><span class="subcell">{{ file.po_refs|join(', ') if file.po_refs else 'PO pending' }}</span></td><td><span class="date-cell">{{ file.received_at[:16].replace('T', ' ') }}</span><span class="subcell">UTC</span></td><td><span class="badge badge-{{ file.status }}"><span class="badge-dot"></span>{{ file.status_label }}</span></td><td>{{ file.stage }}</td><td>{{ file.so_numbers|join(', ') if file.so_numbers else '—' }}</td><td>{{ file.shipreq_numbers|join(', ') if file.shipreq_numbers else '—' }}</td><td><a class="row-arrow" aria-label="View {{ file.filename }} details" href="{{ url_for('file_detail', file_id=file.id) }}">↗</a></td></tr>{% else %}<tr><td colspan="7" class="empty">No files match this view. Incoming files will appear here.</td></tr>{% endfor %}</tbody></table></div>
           <div class="pagination"><span>Page {{ page }} of {{ pages }}</span><div>{% if page > 1 %}<a href="{{ url_for('index', status=status, q=query, page=page-1) }}#files">← Previous</a>{% endif %}{% if page < pages %}<a href="{{ url_for('index', status=status, q=query, page=page+1) }}#files">Next →</a>{% endif %}</div></div>
         </section>
 
         <section class="panel activity-panel" id="activity"><div class="panel-head"><div><div class="eyebrow">AUDIT TRAIL</div><h2>Recent activity</h2></div><span class="minor-note">Most recent events</span></div><div class="activity-list">{% for event in events %}<a class="activity-item" href="{{ url_for('file_detail', file_id=event.file_id) }}"><span class="event-marker event-{{ event.level }}"></span><div><strong>{{ event.message }}</strong><span>{{ event.filename }} · {{ event.stage }}</span></div><time>{{ event.created_at[:16].replace('T', ' ') }} UTC</time></a>{% else %}<div class="empty">Activity will appear after the first file is detected.</div>{% endfor %}</div></section>
-        <footer>Niagara EDI Control Center <span>Read-only operations view · Times shown in UTC</span></footer>
+        <footer>Radius 850 Control Center <span>Customer setup and operations · Times shown in UTC</span></footer>
       </div>
     </main>
   </div>

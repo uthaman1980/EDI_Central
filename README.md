@@ -1,60 +1,84 @@
-# Niagara 850 to Radius middleware
+# Radius EDI Central
 
-This application consumes an **AS2 gateway verified** X12 004010 Niagara 850, creates a Radius Sales Order with lines, then creates a Shipping Request with matching lines. It uses the Xlink REST endpoint supplied for TEST or LIVE. The default mode previews the Sales Order payload; `--submit` enables API calls.
+Radius EDI Central provides a partner/capability workspace and a read-only observer for verified VAN folders, including the user-authorized LIVE Niagara outbound 856 folder. The existing inbound 850 REST creation adapter remains in place with its Sales Order then Shipping Request posting sequence. Other translators and Radius flat-file handoffs are draft-only until their contracts are verified. The supplied Radius flat-file specifications are indexed in [docs/RADIUS_EDI_FORMATS.md](docs/RADIUS_EDI_FORMATS.md). See [docs/ASSESSMENT.md](docs/ASSESSMENT.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and [docs/GAP_ANALYSIS.md](docs/GAP_ANALYSIS.md) for scope and blockers.
 
-## AS2 boundary
+**Sales Order and Shipping Request updates are on hold** while the Radius price-group behavior is investigated. New order creation, preview, response logging, and saved Radius cross references remain available.
 
-Deploy an AS2 gateway (for example, the organization's existing AS2 service) to receive HTTPS AS2 messages, verify Niagara's signing certificate, decrypt with the local private key when encrypted, verify the MIC, and generate the signed or unsigned MDN required by the Niagara trading agreement. The gateway must write the verified business payload to a restricted, local `inbox/<message-id>.edi` file and atomically write `inbox/<message-id>.edi.as2.json` after verification. The JSON must contain:
+Use **Inspect inbound 850** at `/central/850-inspect` to inspect a fixed-width PO before customer setup, including incomplete files. The Niagara sample's header/customer and missing mappings/defaults are documented in [docs/NIAGARA_INBOUND_850.md](docs/NIAGARA_INBOUND_850.md). Inspection does not submit an order or replace missing source values.
 
-```json
-{
-  "as2_sender": "NIAGARA_AS2_ID",
-  "as2_receiver": "OUR_AS2_ID",
-  "authentication_status": "verified",
-  "decryption_status": "verified",
-  "mic_status": "verified",
-  "sha256": "hex SHA-256 of the exact .edi bytes"
-}
-```
+**Radius 856 monitor** at `/central/856-monitor` now reads `PUB.PV_XLShippingNotes` as the primary 856 processing history, so records remain visible after source files move. TEST company 2 is configured through `Radius_NewLive` across all customers. The page filters Processed OK, Not processed, and Rejected, and retains observed changes. LIVE database access is separate and awaits confirmed connection settings. See [docs/RADIUS_856_DATABASE_MONITOR.md](docs/RADIUS_856_DATABASE_MONITOR.md).
 
-For unencrypted but verified AS2 messages, use `"decryption_status": "not_encrypted"` only when the trading agreement permits it. Protect the inbox and receipt so only the gateway service identity can write them. The receipt is a local gateway assertion, not an AS2 verifier; the gateway must perform cryptographic verification. Do not point the watcher at a general upload directory. Gateway product configuration, Niagara AS2 identifiers, certificates, MDN requirements, and HTTPS endpoint are trading partner inputs and are not in the 850 PDF.
+This application has two inbound routes and one Radius posting workflow:
 
-## Configuration
+1. **Direct customer 850 (Phase 1):** an X12 004010 850 received through a verified AS2 gateway or controlled file drop. An AS2 route requires `inbox/<id>.edi` and its `<id>.edi.as2.json` verification receipt. A controlled file drop needs a restricted inbox writable only by the approved receiving service. The existing parser currently implements the supplied Niagara 850 rules. Each additional customer whose segment conventions differ needs its own validated parser mapping.
+2. **VAN transposed 850 (Phase 2):** a fixed-width `EDI850Inbound` `.txt` file in the layout of `EDI850StandardFormat.xls`, such as `PEP0185080209743383.txt`. This route needs no AS2 sidecar. It uses `SOHEAD`/`SOLINE` and `SRHEAD`/`SRLINE` records, validates `TOTALS`, and joins shipping lines to sales lines by customer PO line reference.
 
-1. Install Python 3.10+ and `pip install -r requirements.txt`.
-2. Copy `config.example.json` to `config.json` and set item mappings, unit mappings, and allowed AS2/ISA identifiers. Company `2`, plant `2`, and customer `NIA01` are prefilled from the supplied information. The sample `IM`/`TH` unit codes are placeholders until confirmed in Radius. `VN` is the default source item qualifier; switch to `BP` if Niagara's part number is the Radius item key. Every source item must map explicitly.
-3. Set `environment` to `TEST` or `LIVE`. `RADIUS_API_URL` can override the URL. The supplied TEST/LIVE ODBC DSN and user settings are used for read-only lookup of `PV_CustAddress.AddressRef` to `AddressNum`; API requests create the Sales Order and Shipping Request. Set `RADIUS_DB_PASS` in the process environment. `RADIUS_DSN` and `RADIUS_DB_USER` may override the ODBC defaults.
-4. Run a preview: `python -m niagara_edi inbox/example.edi --config config.json`. The adjacent AS2 receipt is required even in preview.
-5. After reviewing the payload, run `python -m niagara_edi --watch inbox --config config.json --submit`. Run as a managed background service. Use TEST and a controlled test PO before LIVE.
+Both routes create a Radius Sales Order (`XLinkAPISOrder`) followed by Shipping Requests (`XLinkAPIShipReq`). Each customer can use one Shipping Request for all lines or one per line; the PEP01 profile uses one per line. Files move to `processed/` only after the Sales Order and every Shipping Request are confirmed. Failed or uncertain files move to `failed/` for review; a timeout after a POST must be reconciled in Radius before retrying. Preview mode leaves files in `inbox/`.
 
-## Admin dashboard
+## Setup
 
-The read-only dashboard shows today's file and completion counts, open exceptions, a seven-day activity chart, searchable file history, Radius Sales Order and Shipping Request numbers, and the full event timeline and latest error for each file. It refreshes every 30 seconds. All timestamps shown in the UI are UTC. The file list is paginated and searchable across the full history.
+Install Python 3.10+ and `pip install -r requirements.txt`. The web app creates `config.json` when you save the first customer, or you can copy `config.example.json` to `config.json`. Set `environment` to `TEST`. `RADIUS_API_URL` overrides the configured REST endpoint. VAN address references always use the Radius ODBC lookup. Set `RADIUS_DB_PASS` and optionally `RADIUS_DSN` and `RADIUS_DB_USER` before previewing or submitting VAN files. Direct X12 routes can use their configured address map or the same ODBC lookup.
 
-Set `DASHBOARD_USER` and `DASHBOARD_PASSWORD` in the dashboard process environment, then start it separately from the file watcher:
+The supplied TEST ODBC setup is DSN `Radius_NewLive`, host `P-RAD-FSM-DB`, port `3500`, database `vision`, user `vision`. Supply `RADIUS_DB_PASS` as an environment secret or at the interactive prompt. The configured TEST REST endpoint is `http://P-RAD-FSM-EF.fsm.corp:8081/radadapter/radius/api`; ODBC is used only for address lookup, while Sales Orders and Shipping Requests use REST.
+
+## Web application
+
+On Windows, double-click `run-web.bat` from this folder. It loads `run-web.local.bat` when present. This ignored local file preserves the workstation's configured login and TEST ODBC settings without startup prompts. On a fresh clone, copy `run-web.local.example.bat` to `run-web.local.bat` and enter credentials locally, or supply environment variables. Keep its console window open while using the app. Install dependencies first with `python -m pip install -r requirements.txt`.
+
+For a managed, noninteractive start, set administrator credentials and run:
 
 ```powershell
 $env:DASHBOARD_USER = 'edi-admin'
 $env:DASHBOARD_PASSWORD = '<strong unique password>'
-python -m niagara_edi --dashboard --state state/orders.sqlite3
+$env:RADIUS_DB_PASS = '<Radius ODBC password>'
+python -m niagara_edi --dashboard --config config.json --state state/orders.sqlite3
 ```
 
-Open `http://127.0.0.1:8088/` locally. The dashboard binds to loopback by default and uses HTTP Basic authentication. To expose it to other administrators, run it behind an HTTPS reverse proxy with network access controls; do not expose the HTTP listener directly to the Internet. Both the watcher and dashboard must use the same `--state` path. The dashboard has no posting or retry controls.
+Open `http://127.0.0.1:8088/central` for the partner/capability workspace; the existing 850 overview remains at `http://127.0.0.1:8088/`. **Customers** maintains each customer's input format, arrival method, partner identifiers, unit mappings, and Shipping Request mode. Direct X12 routes also have item and optional address maps. A direct customer X12 route uses the ISA sender and either a verified AS2 receipt or a controlled file drop. A VAN transposed route uses `SOHEAD.CustCode` and resolves the file's billing and shipping location codes through Radius ODBC. Save profiles as disabled drafts until the mappings are complete. **Process a file** can preview a file or submit it to Radius TEST; AS2 routes also require the gateway's verified `.as2.json` receipt. Web submission refuses a `LIVE` environment.
 
-The watcher records AS2 receipt, EDI parsing, mapping, Sales Order, Shipping Request, and error events in SQLite. Files without a gateway receipt stay in the inbox as **Awaiting AS2 receipt**. Successful files move to `archive/`; rejected or uncertain files move to `failed/` for operator review. This prevents automatic reposting of an uncertain order. Manual one-file runs also appear in the dashboard.
+The web app binds to loopback by default and uses HTTP Basic authentication and a form token. For remote operators, place it behind an HTTPS reverse proxy with network access controls. The watcher reloads `config.json` every poll, so customer edits take effect without a restart. Preview and manual submission files stage outside the watched inbox.
 
-The SQLite state file `state/orders.sqlite3` stores the PO business key, input digest, posting state, and Radius numbers. Completed replays return the existing numbers. A changed PO under the same PO/release or a failure after posting begins is held for operator reconciliation, since blindly retrying a timed-out POST could create a duplicate. The same applies when Sales Order creation succeeds and Shipping Request creation does not: inspect the Radius Sales Order and shipping requests, then reconcile the state before reprocessing. Preserve the original EDI and gateway receipt for audit.
+For each VAN customer, add a `customers` entry keyed by the file's `SOHEAD.CustCode`. The profile supplies the Radius `cust_code`, `comp_num`, `plant_code`, and order and price unit mappings. The supplied PEP01 file routes to Radius customer PEP01; other customer profiles can use a different Radius code when required. The application reads `SOHEAD.BillAddressRef` and `SOHEAD.ShipAddressRef` and looks each up in `PUB.PV_CustAddress.AddressRef`, filtered by `CompNum` and the Radius `CustCode`. It requires exactly one matching address for each reference; no VAN address map is needed. The PEP01 sample uses `US01` for billing and `1K15` for shipping. Customer item references are read from the received file. The application sends each value as `CustItemRef` on the Sales Order line; Radius resolves its `ItemCode`. Its `EA` order unit and `THOUS` price unit map to those same Radius codes in the PEP example profile. Blank unit mappings prevent posting.
 
-## Mapping details
+For each direct X12 partner, add an `x12_partners` entry keyed by ISA sender. Its customer profile supplies the Radius customer, company, plant, item qualifier, item mapping, and unit mappings. Set ISA identifiers and the arrival method. AS2 routes require a gateway receipt with verified authentication, decryption status, MIC, and SHA-256 digest. The gateway is responsible for signature verification, decryption, and MDN handling.
 
-- `BEG03` -> `CustRef`; `BEG03/BEG04` -> `AddtCustRef`; `BEG05` -> `CustOrderDate`/`SOrderDate`.
-- `N1*BT` and `N1*ST` location IDs (`N104`) -> `PV_CustAddress.AddressRef` under company `2`/customer `NIA01` -> `AddressNum` for `BillAddrNum` and `ShipAddrNum`; `CUR02` -> `CurrCode`. Lookup requires exactly one match per ID. The selected Radius address in the provided screenshot has a blank Address Reference, so address references must be populated before its location can resolve. The sample Niagara 850 in the specification omits `N1*BT` N104; this app holds such orders until an agreed fallback is configured.
-- `PO101` -> customer PO line number; `PO102` -> ordered and ship quantity; `PO103` -> configured Radius order/price units; `PO104` -> `FCUnitPrice`; configured `VN` or `BP` identifier -> Radius `ItemCode`.
-- `DTM*079` per line, falling back to `DTM*038`, -> Sales Order line `ReqDate`; the earliest line date -> Shipping Request `ShipDate`.
-- Blanket (`BK`) orders are blocked by default because the Niagara spec allows no ship-to or line shipment date on them. Enable only after an agreed blanket fulfillment rule is defined.
+## Run
 
-The Xlink guide documents `XLSOrders.XLSOrder[].XLSOrderLine[]` on PDF pages 193-197 and `XLShipReqs.XLShipReq[].XLShipReqLine[]` on pages 210-213. This application checks Radius `statusCode`, record and line `Action`/`ErrorMessage`, and generated numbers.
+To run approved read-only VAN folder observers, configure `EDI_CENTRAL_ALLOWED_ROOTS` as a semicolon-separated list of absolute folders accessible to the worker account. In EDI Central, register a partner, add a VAN capability, enter the Radius inbound or outbound folder, record verified Radius activation and folder contract, enable the partner, then enable observation. Start a separate worker:
 
-## Known site decisions
+```powershell
+$env:EDI_CENTRAL_ALLOWED_ROOTS = 'D:\ApprovedRadiusTest;\\test-server\radius-edi'
+python -m niagara_edi --central-worker --state state/orders.sqlite3 --interval 10
+```
 
-The PDFs do not specify the item cross references, unit conversions, prices when PO price units differ from order units, or AS2 credentials. Configure and confirm these with the Radius and Niagara owners before posting. `PriceUnitCode` and `FCUnitPrice` assume the PO1 unit price applies to the configured price unit without conversion. If that assumption is false, add an explicit conversion rule before using `--submit`.
+The observer takes two stable scans before recording a file. It never moves, rewrites, sends, or translates Radius/VAN files. An outbound observation remains `PICKUP_UNVERIFIED`. User-authorized LIVE Niagara 856 monitoring is configured as described in [docs/NIA01_856_MONITOR.md](docs/NIA01_856_MONITOR.md). `run-web.bat` starts its observer alongside the dashboard. Direct translation remains unavailable. The sidebar's **Preview outbound 856** page can read a sample without creating a monitoring record; observed files show indexed BOL/SR/SO/PO references, and Transactions search includes those references.
+
+```powershell
+python -m niagara_edi PEP0185080209743383.txt --config config.json
+python -m niagara_edi --watch inbox --config config.json --submit
+```
+
+The first command generates a Sales Order preview and makes no API call. The watcher accepts `.txt` VAN files and `.edi` X12 files. It processes all orders in a file and moves the file to `processed/` only when all Sales Orders and Shipping Requests succeed. Use a managed service for continuous polling. The web app and watcher must use the same `--state` SQLite file.
+
+In the web app, a preview can be submitted directly from the preview result without uploading again. Rejected files can be retried from file history when no Radius POST remains uncertain. For a completed PO, **Create new Radius records** requests new numbers. The update code is preserved but blocked in the UI and backend pending Radius investigation. A unique attempt token makes a repeated new-record submission return its saved result. An uncertain attempt requires reconciliation before another submission.
+
+To inspect a Radius rejection, run the watcher or a one-file submission with `--debug`. The log is written to `state/radius-debug.log` by default; `--debug-log PATH` chooses another location and also enables DEBUG mode. `run-web.bat` enables this mode for web submissions. Each exchange has a matching request ID and shows the decoded POST payload, decoded Radius response, and all nested error messages. Logs rotate at 10 MB with three backups and can contain customer order and address data, so keep the log directory restricted.
+
+## Mapping used for VAN files
+
+The positions below are one-based, as in `EDI850StandardFormat.xls`. Dates are `DDMMYYYY` in the file and ISO dates in Radius payloads.
+
+| Record | Source | Radius field |
+| --- | --- | --- |
+| SOHEAD | `SOrderDate` 30, `CustOrderDate` 38, `CustCode` 46, `CustRef` 157, `TermsCode` 214, `CustReqDate` 222, `CurrCode` 230, `AddtCustRef` 537 | Customer order and required dates, customer profile, PO reference, terms and currency; `SOrderDate` is omitted so Radius defaults it to today. The Sales Order payload sends `SOSourceCode` as `EDI`. |
+| SOHEAD | `BillAddressRef` 73, `ShipAddressRef` 87 | Look up each `AddressRef` in Radius and send the resulting `BillAddrNum`, `ShipAddrNum` |
+| SOLINE | `CustItemRef` 68, `OrderedQty` 98, `OrderUnitCode` 110, `SOrderLineNum` 850 | `CustItemRef`, `OrderedQty`, `OrderUnitCode`; each API line also carries `CompNum`, `PlantCode`, and new-order `SOrderNum`; sequential Radius line number when blank; Radius resolves `ItemCode` |
+| SOLINE | `FCUnitPrice` 120, `PriceUnitCode` 133, `ReqDate` 60, `CustPOLineRef` 862 | Price, price unit, required date, customer PO line (10, 20, 30, 40, 50 in the sample) |
+| SRHEAD | `ShipDate` 45 | Shipping Request `ShipDate` |
+| SRLINE | `ShipQty` 170, `CustRef` 455, `ShipCustPOLineNum` 528 | Shipping quantity and reference matched to its SO line; the Shipping Request uses the resolved `ItemCode` returned by Radius |
+
+The sample file has one PEP01 order, five lines, and a ship date of October 7, 2026. `TOTALS.NumOrders` counts SO and SR headers together. The parser checks record count, matching customer and address references, line identity, positive quantities, and ship quantity no greater than order quantity. For previews and new Radius submissions, past customer required, line required, and shipping dates become the processing server's current local date in the Radius payload. Set the server's time zone to Central Time for this workflow. Each replacement is recorded in file history with its original and new date. The received EDI file is retained unchanged for audit and digest verification; future dates and historical order dates remain as supplied.
+
+## Posting and recovery
+
+SQLite stores the business key, input digest, posting state, and all Radius numbers. Each confirmed Sales Order and Shipping Request POST also saves its request payload, decoded response record, PO line reference when available, and Radius numbers. Open the file detail page from a submission result or file history to inspect these records; file history searches PO, Sales Order, and Shipping Request numbers. Completed replays return their existing numbers. A changed PO or any uncertain result after posting starts is held for manual reconciliation to avoid a duplicate Sales Order or Shipping Request. A definite Radius Sales Order rejection clears its pending attempt so a corrected file can be submitted; a transport error remains pending for reconciliation. For one-request-per-line customers, each confirmed request number is saved immediately; a later failure leaves the order in `ship_pending` for reconciliation. The Radius client decodes the Base64 response payload before reporting validation errors, including errors on individual lines. The watcher moves a rejected file to `failed/`; after correcting configuration or reconciling Radius state, reintroduce the file through a controlled operator process.

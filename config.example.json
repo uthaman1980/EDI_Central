@@ -12,5 +12,35 @@
   "allowed_as2_receiver": null,
   "allowed_isa_sender": null,
   "allowed_isa_receiver": null,
-  "allow_blanket_orders": false
+  "allow_blanket_orders": false,
+  "x12_partners": {
+    "CUSTOMER_ISA_SENDER": {
+      "enabled": false,
+      "transport": "as2",
+      "as2_sender": "CUSTOMER_AS2_ID",
+      "as2_receiver": "OUR_AS2_ID",
+      "isa_receiver": "OUR_ISA_ID",
+      "cust_code": "RADIUS_CUSTOMER",
+      "comp_num": 2,
+      "plant_code": "2",
+      "item_identifier": "VN",
+      "item_map": {},
+      "uom_map": {"EA": "EACH"},
+      "price_unit_map": {"EA": "EACH"}
+    }
+  },
+  "customers": {
+    "PEP01": {
+      "display_name": "PEPSICO",
+      "enabled": false,
+      "cust_code": "PEP01",
+      "comp_num": 2,
+      "plant_code": "2",
+      "item_identifier": "CI",
+      "item_map": {},
+      "uom_map": {"EA": "EA"},
+      "price_unit_map": {"THOUS": "THOUS"},
+      "shipping_request_mode": "per_line"
+    }
+  }
 }

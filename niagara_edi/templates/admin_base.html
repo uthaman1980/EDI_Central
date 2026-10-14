@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}EDI administration{% endblock %} · Radius EDI Central</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="{{ url_for('central_home') }}"><img class="brand-logo" src="{{ url_for('static', filename='fsm_logo.png') }}" alt="Five Star"><span><strong>RADIUS</strong><small>EDI CENTRAL</small></span></a>
+    <div class="side-caption">WORKSPACE</div>
+    <nav class="nav">
+      <a class="nav-link" href="{{ url_for('central_home') }}">EDI Central</a>
+      <a class="nav-link" href="{{ url_for('central_transactions') }}">Transactions &amp; files</a>
+      <a class="nav-link" href="{{ url_for('radius856_monitor') }}">Radius 856 monitor</a>
+      <a class="nav-link" href="{{ url_for('central_850_inspect') }}">Inspect inbound 850</a>
+      <a class="nav-link" href="{{ url_for('central_856_preview') }}">Preview outbound 856</a>
+      <a class="nav-link" href="{{ url_for('central_exceptions') }}">Exceptions</a>
+      <a class="nav-link" href="{{ url_for('central_jobs') }}">Observer jobs</a>
+      <a class="nav-link" href="{{ url_for('index') }}">Overview</a>
+      <a class="nav-link {% if page == 'customers' %}active{% endif %}" href="{{ url_for('customers') }}">Customers</a>
+      <a class="nav-link {% if page == 'inbound' %}active{% endif %}" href="{{ url_for('inbound') }}">Process a file</a>
+      <a class="nav-link" href="{{ url_for('index') }}#files">File history</a>
+    </nav>
+    <div class="sidebar-bottom"><span class="system-dot"></span><span>Local administration</span></div>
+  </aside>
+  <main class="main">
+    <header class="topbar"><div class="breadcrumb">Radius EDI Central <span>/</span> <strong>{% block breadcrumb %}{% endblock %}</strong></div><span class="table-count">EDI operations</span></header>
+    <div class="content admin-content">{% block content %}{% endblock %}</div>
+  </main>
+</div>
+</body>
+</html>

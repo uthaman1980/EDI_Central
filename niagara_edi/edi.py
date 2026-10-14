@@ -17,6 +17,9 @@ class Line:
     shipment_number: str = ""
     ship_no_later: str = ""
     promised_ship: str = ""
+    price_uom: str = ""
+    radius_line_num: int = 0
+    ship_quantity: Decimal | None = None
 
 
 @dataclass
@@ -36,6 +39,12 @@ class Order:
     receiving_company: str = ""
     vendor_site: str = ""
     lines: list[Line] = field(default_factory=list)
+    comp_num: str = ""
+    plant_code: str = ""
+    bill_addr_num: str = ""
+    ship_addr_num: str = ""
+    shipping_date: str = ""
+    source_format: str = "x12"
 
     @property
     def business_key(self):

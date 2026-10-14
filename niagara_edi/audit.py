@@ -47,6 +47,19 @@ def connect(db_path: Path):
     )""")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_files_updated ON files(updated_at DESC)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_file ON file_events(file_id, id DESC)")
+    conn.execute("""CREATE TABLE IF NOT EXISTS radius_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        file_id INTEGER NOT NULL REFERENCES files(id),
+        business_key TEXT NOT NULL,
+        entity TEXT NOT NULL,
+        po_line TEXT,
+        so_number INTEGER,
+        shipreq_number INTEGER,
+        request_json TEXT NOT NULL,
+        response_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_radius_records_file ON radius_records(file_id, id)")
     conn.commit()
     return conn
 

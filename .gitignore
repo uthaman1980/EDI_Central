@@ -1,10 +1,20 @@
 __pycache__/
 *.pyc
 .env
+config.json
 state/
+radius-debug.log*
 inbox/
+manual/
+previews/
+processed/
 archive/
 failed/
 *.extracted.txt
 .repo-review/
 *.pdf
+run-web.local.bat
+# Original customer files are retained locally; commit synthetic fixtures only.
+/PEP0185080209743383.txt
+/NIA85080470250957.txt
+/856NIA01000471.txt

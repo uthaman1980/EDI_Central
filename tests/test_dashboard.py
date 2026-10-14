@@ -51,6 +51,12 @@ class DashboardTests(unittest.TestCase):
             file_id = conn.execute("SELECT id FROM files").fetchone()[0]
         detail = self.client.get(f"/files/{file_id}", headers=self.auth)
         self.assertIn(b"Shipping Request 8001 created", detail.data)
+        self.assertIn(b"Confirmed POST records", detail.data)
+        self.assertIn(b"Decoded Radius response", detail.data)
+        self.assertIn(b"POST payload", detail.data)
+        self.assertIn(b"PO PO123", detail.data)
+        self.assertIn(b"SO 9001", detail.data)
+        self.assertIn(b"8001", self.client.get("/?q=8001", headers=self.auth).data)
 
     def test_rejected_file_records_error(self):
         meta = json.loads(self.meta.read_text())
@@ -81,9 +87,21 @@ class DashboardTests(unittest.TestCase):
                                     client=Radius(), resolver=Resolver()),
                          [(edi.name, "complete")])
         self.assertFalse(edi.exists())
-        self.assertEqual(len(list((inbox.parent / "archive").glob("*.edi"))), 1)
+        self.assertEqual(len(list((inbox.parent / "processed").glob("*.edi"))), 1)
         with closing(connect(self.db)) as conn:
             self.assertEqual(conn.execute("SELECT status FROM files").fetchone()[0], "complete")
+
+    def test_watcher_accepts_controlled_file_drop_without_receipt(self):
+        profile = {key: self.cfg[key] for key in
+                   ("comp_num", "plant_code", "cust_code", "item_identifier", "item_map", "uom_map", "price_unit_map")}
+        profile.update({"transport": "trusted_drop", "isa_receiver": "OURID"})
+        self.cfg["x12_partners"] = {"027948264": profile}
+        inbox = self.edi.parent / "inbox"
+        inbox.mkdir()
+        (inbox / self.edi.name).write_bytes(self.edi.read_bytes())
+        result = scan_inbox(inbox, self.cfg, self.db, submit=True, client=Radius(), resolver=Resolver())
+        self.assertEqual(result, [(self.edi.name, "complete")])
+        self.assertEqual(len(list((inbox.parent / "processed").glob("*.edi"))), 1)
 
 
 if __name__ == "__main__":

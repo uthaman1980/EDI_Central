@@ -1,0 +1,34 @@
+{% extends "admin_base.html" %}
+{% block title %}{{ 'Edit customer' if editing else 'Add customer' }}{% endblock %}
+{% block breadcrumb %}{{ 'Edit customer' if editing else 'Add customer' }}{% endblock %}
+{% block content %}
+<div class="heading-row"><div><div class="eyebrow">CUSTOMER SETUP</div><h1>{{ 'Edit ' ~ form.get('key') if editing else 'Add customer' }}</h1><p>Save as a draft until the Radius mappings and partner identifiers are confirmed.</p></div><a class="refresh-button" href="{{ url_for('customers') }}">Back to customers</a></div>
+{% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
+<form method="post" action="{{ action }}" class="admin-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <section class="panel admin-panel"><div class="panel-head"><div><div class="eyebrow">SOURCE</div><h2>Customer and inbound format</h2></div></div><div class="form-grid">
+    <label>Display name<input name="display_name" value="{{ form.get('display_name', '') }}" maxlength="80" placeholder="Customer name"></label>
+    <label>Input format<input value="{{ 'VAN - Radius transposed TXT' if form.get('kind') == 'van' else 'Direct customer - X12 850' }}" readonly><input type="hidden" name="kind" value="{{ form.get('kind') }}"></label>
+    <label>Routing ID<input name="key" value="{{ form.get('key', '') }}" required maxlength="32" {% if editing %}readonly{% endif %}><small>VAN: SOHEAD CustCode. Direct: ISA sender.</small></label>
+    <label class="check-label"><input type="checkbox" name="enabled" {% if form.get('enabled') in (True, 'on') %}checked{% endif %}> Enable automatic processing</label>
+  </div></section>
+  <section class="panel admin-panel"><div class="panel-head"><div><div class="eyebrow">RADIUS</div><h2>Order destination and mapping</h2></div></div><div class="form-grid">
+    <label>Radius customer code<input name="cust_code" value="{{ form.get('cust_code', '') }}" required maxlength="8"><small>For VAN files, this can differ from the incoming SOHEAD CustCode.</small></label>
+    <label>Company number<input name="comp_num" type="number" min="1" value="{{ form.get('comp_num', 2) }}" required></label>
+    <label>Plant code<input name="plant_code" value="{{ form.get('plant_code', '2') }}" required maxlength="8"></label>
+    {% if form.get('kind') == 'direct' %}<label>Direct X12 item qualifier<input name="item_identifier" value="{{ form.get('item_identifier', 'VN') }}" maxlength="4"><small>Such as VN or BP.</small></label>
+    <label>Direct X12 item map<textarea name="item_map" rows="7" placeholder="SOURCE_ITEM=RADIUS_ITEM">{{ form.get('item_map', '') }}</textarea></label>{% endif %}
+    <label>Order unit map<textarea name="uom_map" rows="7" placeholder="EA=EACH">{{ form.get('uom_map', '') }}</textarea></label>
+    <label>Price unit map<textarea name="price_unit_map" rows="5" placeholder="THOUS=THOUS">{{ form.get('price_unit_map', '') }}</textarea></label>
+    <label>Shipping request creation<select name="shipping_request_mode"><option value="combined" {% if form.get('shipping_request_mode', 'combined') == 'combined' %}selected{% endif %}>One request for all order lines</option><option value="per_line" {% if form.get('shipping_request_mode') == 'per_line' %}selected{% endif %}>One request per order line</option></select></label>
+    {% if form.get('kind') == 'direct' %}<label>Address map<textarea name="address_map" rows="5" placeholder="BILL1=101&#10;SHIP1=202">{{ form.get('address_map', '') }}</textarea><small>Optional when Radius AddressRef can be looked up through ODBC.</small></label>{% else %}<p>BillAddressRef and ShipAddressRef in each VAN file are looked up in Radius by company, customer, and AddressRef. Each code must identify exactly one customer address. No portal address map is needed.</p>{% endif %}
+  </div></section>
+  {% if form.get('kind') == 'direct' %}<section class="panel admin-panel"><div class="panel-head"><div><div class="eyebrow">DIRECT X12 ONLY</div><h2>Verified transport identifiers</h2></div></div><div class="form-grid">
+    <label>Arrival method<select name="transport"><option value="as2" {% if form.get('transport', 'as2') == 'as2' %}selected{% endif %}>Verified AS2 gateway</option><option value="trusted_drop" {% if form.get('transport') == 'trusted_drop' %}selected{% endif %}>Controlled file drop</option></select><small>A controlled file drop must be writable only by the approved receiving service.</small></label>
+    <label>AS2 sender<input name="as2_sender" value="{{ form.get('as2_sender', '') }}"></label>
+    <label>AS2 receiver<input name="as2_receiver" value="{{ form.get('as2_receiver', '') }}"></label>
+    <label>ISA receiver<input name="isa_receiver" value="{{ form.get('isa_receiver', '') }}"></label>
+  </div></section>{% endif %}
+  <div class="form-actions"><button type="submit" class="primary-button">Save customer</button><a class="refresh-button" href="{{ url_for('customers') }}">Cancel</a></div>
+</form>
+{% endblock %}

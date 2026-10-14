@@ -2,24 +2,15 @@ import hashlib
 import json
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from niagara_edi.edi import EDIError, parse_850
-from niagara_edi.service import DuplicateOrder, process_file
+from niagara_edi.service import DuplicateOrder, initialize, process_file
 
 
 def sample_edi():
-    isa = "ISA*00*          *00*          *01*027948264      *ZZ*OURID          *261008*1200*U*00401*000000001*0*T*>~"
-    assert len(isa) == 106
-    segments = [
-        "GS*PO*027948264*OURID*20261008*1200*1*X*004010",
-        "ST*850*0001", "BEG*00*SA*PO123**20261008", "CUR*SE*USD",
-        "REF*8N*NBL", "N9*VR*120201", "N1*BT*Niagara Billing*92*BILL1",
-        "N1*ST*Niagara Houston*92*HOU", "PO1*1*25*EA*2.50**BP*BP001*VN*VEN001",
-        "REF*SS*1", "DTM*038*20261015", "DTM*079*20261014",
-        "CTT*1*25", "SE*13*0001", "GE*1*1", "IEA*1*000000001",
-    ]
-    return (isa + "~".join(segments) + "~").encode("ascii")
+    return (Path(__file__).parent / "fixtures" / "synthetic_niagara_850.edi").read_bytes()
 
 
 class Resolver:
@@ -65,6 +56,9 @@ class FlowTests(unittest.TestCase):
         result = process_file(self.edi, self.meta, self.cfg, self.db, submit=True, client=radius, resolver=Resolver())
         self.assertEqual(result[0]["state"], "complete")
         self.assertEqual(radius.calls[0][1]["XLSOrders"]["XLSOrder"][0]["BillAddrNum"], 101)
+        so = radius.calls[0][1]["XLSOrders"]["XLSOrder"][0]
+        self.assertNotIn("SOrderDate", so)
+        self.assertEqual(so["SOSourceCode"], "EDI")
         self.assertEqual(radius.calls[1][1]["XLShipReqs"]["XLShipReq"][0]["ShipAddrNum"], 202)
         self.assertEqual(radius.calls[1][1]["XLShipReqs"]["XLShipReq"][0]["ShipDate"], "2026-10-14")
         repeat = process_file(self.edi, self.meta, self.cfg, self.db, submit=True, client=radius, resolver=Resolver())
@@ -75,6 +69,29 @@ class FlowTests(unittest.TestCase):
         with self.assertRaises(EDIError):
             parse_850(self.edi.read_bytes().replace(b"SE*13*0001", b"SE*12*0001"))
 
+    def test_x12_partner_profile_routes_by_isa_sender(self):
+        profile = {key: self.cfg[key] for key in
+                   ("comp_num", "plant_code", "cust_code", "item_identifier", "item_map", "uom_map", "price_unit_map")}
+        profile.update({"as2_sender": "NIAGARA", "as2_receiver": "OURS", "isa_receiver": "OURID"})
+        self.cfg.pop("cust_code")
+        self.cfg.pop("allowed_as2_sender")
+        self.cfg.pop("allowed_as2_receiver")
+        self.cfg["x12_partners"] = {"027948264": profile}
+        radius = Radius()
+        result = process_file(self.edi, self.meta, self.cfg, self.db, submit=True, client=radius, resolver=Resolver())
+        self.assertEqual(result[0]["state"], "complete")
+        self.assertEqual(radius.calls[0][1]["XLSOrders"]["XLSOrder"][0]["CustCode"], "NIA01")
+
+    def test_controlled_file_drop_profile_needs_no_as2_receipt(self):
+        profile = {key: self.cfg[key] for key in
+                   ("comp_num", "plant_code", "cust_code", "item_identifier", "item_map", "uom_map", "price_unit_map")}
+        profile.update({"transport": "trusted_drop", "isa_receiver": "OURID"})
+        self.cfg["x12_partners"] = {"027948264": profile}
+        self.meta.unlink()
+        result = process_file(self.edi, self.meta, self.cfg, self.db, submit=True,
+                              client=Radius(), resolver=Resolver())
+        self.assertEqual(result[0]["state"], "complete")
+
     def test_changed_po_requires_reconciliation(self):
         process_file(self.edi, self.meta, self.cfg, self.db, submit=True, client=Radius(), resolver=Resolver())
         data = self.edi.read_bytes().replace(b"2.50", b"3.50")
@@ -84,6 +101,20 @@ class FlowTests(unittest.TestCase):
         self.meta.write_text(json.dumps(meta))
         with self.assertRaises(DuplicateOrder):
             process_file(self.edi, self.meta, self.cfg, self.db, submit=True, client=Radius(), resolver=Resolver())
+
+    def test_existing_order_database_gains_shipping_request_number_list(self):
+        import sqlite3
+        with closing(sqlite3.connect(self.db)) as conn:
+            conn.execute("""CREATE TABLE orders (
+                business_key TEXT PRIMARY KEY, digest TEXT NOT NULL, state TEXT NOT NULL,
+                so_number INTEGER, shipreq_number INTEGER, error TEXT)""")
+            conn.commit()
+        conn = initialize(self.db)
+        try:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(orders)")}
+            self.assertIn("shipreq_numbers", columns)
+        finally:
+            conn.close()
 
 
 if __name__ == "__main__":

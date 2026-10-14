@@ -1,0 +1,9 @@
+# Incremental migration and acceptance plan
+
+1. **Baseline completed:** inventory the real 850 app, document contracts and gaps, preserve working REST SO/SR creation and test fixtures. Baseline tests pass.
+2. **Foundation implemented:** versioned central tables, partner/capability drafts, typed routes, operator pages, read-only observer worker, stable-file/duplicate checks, disabled partner/capability enforcement. Keep old 850 pipeline active and separate. Acceptance: synthetic TEST VAN outbound 856 file is observed without mutation and shown as `PICKUP_UNVERIFIED`.
+3. **First customer VAN outbound 856:** get the actual Radius 856 outbound folder, filename, active setting, format and ownership confirmation. Configure only that TEST capability, shadow-observe files, compare counts with Radius/VAN records, and establish operations/retention. No claim of VAN pickup without positive proof. Rollback: pause capability and stop worker; Radius/VAN files are untouched.
+4. **Niagara inbound 850 parity:** define approved native Radius flat-file handoff if required, capture sanitized regression fixtures, build a capability adapter, dual-run only in dry-run/shadow mode, and compare mapped lines/dates/addresses/RADIUS IDs. Prevent the legacy and new workers from posting the same document. Cut over only after UAT sign-off. Rollback to existing 850 worker/UI without changing Radius records.
+5. **Additional formats:** activate one verified customer/message at a time with versioned parser/serializer, contract tests, permissions, delivery/ack handling, and a tested rollback. Unknown 855/856/810/830/858 mappings remain draft.
+
+SO/SR update functionality is intentionally held. Radius must explain why 261383's `PEPSI` price group is rejected even when the field is omitted. Require an approved TEST update contract and successful reconciliation test before enabling it.
