@@ -1,0 +1,7 @@
+# EDI operations design
+
+Current controls: authenticated manual inbound 850 preview/TEST submission, file history and Radius request/response audit, central observer jobs/leases, and observer exceptions. The legacy watcher polls an app-owned inbox and moves submitted or failed files; the central observer only reads verified Radius/VAN folders. These are distinct ownership contracts.
+
+Planned durable queue: one capability-scoped job with unique idempotency key, claim/lease, heartbeat, retry time and attempt history. Workers must honor pause/resume at capability level, recover expired claims, limit concurrency per document key, and leave uncertain Radius/delivery outcomes in reconciliation rather than automatic retry. Failed files need stage, category, owner, resolution status and immutable artifact links. Operators may preview, inspect, reconcile and reprocess only through backend role checks and audited actions.
+
+Planned health and alerts must distinguish app/worker availability from business processing. Alert on evidence-backed failures and overdue expectations; deduplicate by unresolved incident key. Reports should derive from committed transaction and stage events, expose filters and export, and distinguish observed files from completed Radius orders and delivered customer files. Test, UAT and LIVE need independent path/secret/permission policy before activation. No production jobs or LIVE data changes are part of this design.

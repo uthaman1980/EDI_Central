@@ -4,6 +4,8 @@ Radius EDI Central provides a partner/capability workspace and a read-only obser
 
 **Sales Order and Shipping Request updates are on hold** while the Radius price-group behavior is investigated. New order creation, preview, response logging, and saved Radius cross references remain available.
 
+**Mapping & master data** at `/central/mappings` provides versioned inbound/outbound field rules, customer code lists, defaults, date/number conversions, sample previews and immutable published definitions. Direct-customer inbound mappings can prepare and explicitly submit TEST orders through the existing Radius REST creation service, without a Radius 850 intermediate file. Outbound 856 mapping currently previews/downloads customer CSV/JSON. See [docs/MAPPING_AND_ONBOARDING.md](docs/MAPPING_AND_ONBOARDING.md) for supported contracts and onboarding steps.
+
 Use **Inspect inbound 850** at `/central/850-inspect` to inspect a fixed-width PO before customer setup, including incomplete files. The Niagara sample's header/customer and missing mappings/defaults are documented in [docs/NIAGARA_INBOUND_850.md](docs/NIAGARA_INBOUND_850.md). Inspection does not submit an order or replace missing source values.
 
 **Radius 856 monitor** at `/central/856-monitor` now reads `PUB.PV_XLShippingNotes` as the primary 856 processing history, so records remain visible after source files move. TEST company 2 is configured through `Radius_NewLive` across all customers. The page filters Processed OK, Not processed, and Rejected, and retains observed changes. LIVE database access is separate and awaits confirmed connection settings. See [docs/RADIUS_856_DATABASE_MONITOR.md](docs/RADIUS_856_DATABASE_MONITOR.md).

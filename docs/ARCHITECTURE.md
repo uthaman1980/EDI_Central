@@ -2,6 +2,8 @@
 
 The app remains a modular Python service. The existing REST inbound 850 adapter runs unchanged through `service.py` and `radius.py`. `central.py` owns versioned partner/capability configuration and read-only file observation. `central_ui.py` adds the operator workspace to the authenticated Flask app. `--central-worker` is a separate polling process sharing the SQLite state file.
 
+`mapping_engine.py` supplies bounded declarative field rules and format previews; `mappings.py` versions definitions and records sample validation evidence. `mapping_ui.py` provides the editor and TEST handoff, and `mapping_api.py` prepares mapped customer orders for the existing creation service. Direct customers use this API bridge without an intermediate 850 file, as explicitly clarified by the user. A source file's published revision/scope is pinned in `central_mapping_file_links` for later submissions and retries. Manual TEST submission is available; automatic direct intake/delivery workers remain a separate increment. See [MAPPING_AND_ONBOARDING.md](MAPPING_AND_ONBOARDING.md).
+
 ```mermaid
 flowchart LR
  P[Partner + capability configuration] --> W[Scoped observer worker]

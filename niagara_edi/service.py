@@ -98,7 +98,7 @@ def validate_transport(meta: dict, cfg: dict):
 
 def process_file(edi_path: Path, meta_path: Path, cfg: dict, db_path: Path, *, submit: bool = False,
                  client=None, resolver=None, resubmit_mode=None, resubmission_token=None,
-                 target_so_number=None):
+                 target_so_number=None, mapping_revision_id=None):
     """Process an X12 AS2 handoff or a Radius EDI850Inbound file."""
     if resubmit_mode == "update":
         raise ValueError("Radius Sales Order and Shipping Request updates are on hold pending Radius investigation")
@@ -110,7 +110,7 @@ def process_file(edi_path: Path, meta_path: Path, cfg: dict, db_path: Path, *, s
         return _process_file_impl(edi_path, meta_path, cfg, db_path, audit, file_id, expected_digest,
                                   submit=submit, client=client, resolver=resolver,
                                   resubmit_mode=resubmit_mode, resubmission_token=resubmission_token,
-                                  target_so_number=target_so_number)
+                                  target_so_number=target_so_number, mapping_revision_id=mapping_revision_id)
     except Exception as exc:
         stage = audit.status(file_id)["stage"]
         attention = stage in {"Sales Order", "Shipping Request", "Reconciliation"}
@@ -122,13 +122,19 @@ def process_file(edi_path: Path, meta_path: Path, cfg: dict, db_path: Path, *, s
 
 
 def _process_file_impl(edi_path, meta_path, cfg, db_path, audit, file_id, expected_digest,
-                       *, submit, client, resolver, resubmit_mode, resubmission_token, target_so_number):
+                       *, submit, client, resolver, resubmit_mode, resubmission_token, target_so_number, mapping_revision_id=None):
     data = edi_path.read_bytes()
     digest = hashlib.sha256(data).hexdigest()
     if digest != expected_digest:
         raise ValueError("Input file changed during processing")
     fixed = data.lstrip().startswith(b"EDI850Inbound")
-    if fixed:
+    mapped_customer_cfg = None
+    if mapping_revision_id is not None:
+        from .mapping_api import prepare_orders
+        audit.update(file_id, "processing", "Mapping", "Validating published direct-customer mapping")
+        orders, mapped_customer_cfg, mapping_label = prepare_orders(data, db_path, file_id, mapping_revision_id, cfg["environment"])
+        audit.update(file_id, "processing", "Mapping", mapping_label + "; direct Radius API route")
+    elif fixed:
         audit.update(file_id, "processing", "EDI", "Parsing fixed-width EDI850Inbound")
         orders = parse_fixed_850(data)
     else:
@@ -172,7 +178,9 @@ def _process_file_impl(edi_path, meta_path, cfg, db_path, audit, file_id, expect
     previews = []
     for order in orders:
         customer_cfg = dict(cfg)
-        if fixed:
+        if mapped_customer_cfg is not None:
+            customer_cfg.update(mapped_customer_cfg)
+        elif fixed:
             profiles = cfg.get("customers", {})
             if order.sender not in profiles:
                 raise ValueError(f"No customer profile for {order.sender!r}")
@@ -188,6 +196,13 @@ def _process_file_impl(edi_path, meta_path, cfg, db_path, audit, file_id, expect
             customer_cfg.update(partners[order.sender])
         if not customer_cfg.get("cust_code"):
             raise ValueError("Missing Radius customer code")
+        if mapped_customer_cfg is not None and not resubmit_mode:
+            from .mapping_api import existing_order_from_other_route
+            existing_so=existing_order_from_other_route(db_path,order,customer_cfg,cfg["environment"])
+            if existing_so:
+                message=f"PO {order.po_number} already has Sales Order {existing_so} from another route; reconcile before using this mapping"
+                audit.update(file_id,"attention","Reconciliation",message,level="error")
+                raise DuplicateOrder(message)
         if not order.bill_to_id or not order.ship_to_id:
             raise ValueError(f"PO {order.po_number} lacks Bill To or Ship To address reference")
         mapped_cfg = customer_cfg

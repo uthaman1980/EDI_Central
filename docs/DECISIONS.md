@@ -10,6 +10,7 @@
 | 2026-10-14 | Use versioned SQLite migration beside legacy tables | Existing app already uses SQLite; target enterprise database standard remains **TO VERIFY** |
 | 2026-10-14 | Make XLShippingNotes the primary 856 processing history | User confirmed files move after processing; supplied fields were verified through TEST DSN Radius_NewLive using SELECT only. Status 1 is Processed OK; provider pickup remains independent |
 | 2026-10-14 | Inspect Niagara 850 before enabling its route | Supplied NIA-prefixed sample contains source customer BXZALLST and missing dates/currency/billing/price basis. TEST address and customer-item references do not match. Diagnostic inspection is implemented; posting waits for verified mappings/defaults and the missing SFTP path |
+| 2026-10-14 | Direct customer mapping targets Radius REST | User explicitly confirmed customer-file extraction and mapping should create SO/SR directly without an intermediate Radius 850 file. The mapping bridge reuses the proven creation service and pins a published TEST mapping version to each source file |
 
 **Niagara VAN outbound 856 activated for observation:** user supplied the active `NIA01` configuration screenshot and explicitly authorized LIVE read-only monitoring. The approved share is accessible, and the first scan found no matching files. See [NIA01_856_MONITOR.md](NIA01_856_MONITOR.md) for exact settings, provenance, and remaining pickup-evidence gaps. No LIVE REST or XLink write is authorized by this monitoring permission.
 

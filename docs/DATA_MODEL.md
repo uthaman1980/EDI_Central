@@ -15,6 +15,10 @@
 | `central_radius_sources` | Per-environment/company read-only database monitor; enabled state, polling, sweep cursors, lease and errors |
 | `central_radius_856_records` | Durable XLShippingNotes snapshots, unique source/TableRecId, across customers regardless of file retention |
 | `central_radius_856_events` | Append-only observed snapshot changes with Radius processing status and error |
+| `central_mapping_profiles` | Partner/environment/direction/message/source/target and Shipping Request mode for one customer mapping |
+| `central_mapping_revisions` | Draft/edit counter, immutable published rules, content hash and publication actor/time |
+| `central_mapping_runs` | Sample hashes, rule/scope evidence, validation counts and actor; no sample content |
+| `central_mapping_file_links` | Pinned published rule revision and scope for original source files in the existing SO/SR audit workflow |
 
 The legacy `files`, `file_events`, `orders`, and `radius_records` tables retain the working 850 file, error, SO/SR, and decoded POST/response history. A file artifact is not a document; an observed file is not proof of Radius posting, VAN pickup, or partner acceptance. Migration `002_outbound856.sql` adds independent artifact parsing status/error/version and 856 reference fields. The `RADIUS_856_OUT_V1` profile populates documents only after structure, totals, and configured customer/company/plant checks pass. Other format profiles stay opaque. Multiple SOs are recorded at line level, rather than assigning an arbitrary SO to a shipping note.
 

@@ -163,7 +163,7 @@ def build_sales_order(order, cfg: dict) -> dict:
     for index, line in enumerate(order.lines, 1):
         if not line.po_line.isdigit():
             raise ValueError(f"PO line {line.po_line!r} cannot map to numeric Radius CustPOLineNum")
-        if order.source_format == "radius_fixed":
+        if order.source_format in {"radius_fixed", "mapped_customer"}:
             customer_item = line.identifiers.get("CI")
             if not customer_item:
                 raise ValueError(f"VAN line {line.po_line} is missing CustItemRef")
@@ -187,7 +187,7 @@ def build_sales_order(order, cfg: dict) -> dict:
               "CustOrderDate": order.po_date,
               "SOSourceCode": "EDI",
               "XLSOrderLine": lines}
-    if order.source_format == "radius_fixed":
+    if order.source_format in {"radius_fixed", "mapped_customer"}:
         if getattr(order, "cust_req_date", ""):
             header["CustReqDate"] = order.cust_req_date
         if getattr(order, "addt_cust_ref", ""):
@@ -232,7 +232,7 @@ def build_shipping_request(order, cfg: dict, so_number: int, sales_record: dict)
                            "SOrderNum": so_number, "SOrderLineNum": number,
                            "ItemCode": item_code, "ShipQty": float(edi_line.ship_quantity if edi_line.ship_quantity is not None else edi_line.quantity),
                            "CustPOLineNum": int(edi_line.po_line), "CustPOReleaseNum": order.release}
-        if order.source_format == "radius_fixed" and edi_line.shipment_number:
+        if order.source_format in {"radius_fixed", "mapped_customer"} and edi_line.shipment_number:
             ship_line["CustRef"] = edi_line.shipment_number
         ship_lines.append(ship_line)
     return {"XLShipReqs": {"XLShipReq": [{"CompNum": cfg["comp_num"], "PlantCode": cfg["plant_code"],

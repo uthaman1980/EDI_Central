@@ -10,19 +10,41 @@
 <div class="app-shell">
   <aside class="sidebar">
     <a class="brand" href="{{ url_for('central_home') }}"><img class="brand-logo" src="{{ url_for('static', filename='fsm_logo.png') }}" alt="Five Star"><span><strong>RADIUS</strong><small>EDI CENTRAL</small></span></a>
+    {% set path = request.path %}
     <div class="side-caption">WORKSPACE</div>
-    <nav class="nav">
-      <a class="nav-link" href="{{ url_for('central_home') }}">EDI Central</a>
-      <a class="nav-link" href="{{ url_for('central_transactions') }}">Transactions &amp; files</a>
-      <a class="nav-link" href="{{ url_for('radius856_monitor') }}">Radius 856 monitor</a>
-      <a class="nav-link" href="{{ url_for('central_850_inspect') }}">Inspect inbound 850</a>
-      <a class="nav-link" href="{{ url_for('central_856_preview') }}">Preview outbound 856</a>
-      <a class="nav-link" href="{{ url_for('central_exceptions') }}">Exceptions</a>
-      <a class="nav-link" href="{{ url_for('central_jobs') }}">Observer jobs</a>
-      <a class="nav-link" href="{{ url_for('index') }}">Overview</a>
-      <a class="nav-link {% if page == 'customers' %}active{% endif %}" href="{{ url_for('customers') }}">Customers</a>
-      <a class="nav-link {% if page == 'inbound' %}active{% endif %}" href="{{ url_for('inbound') }}">Process a file</a>
-      <a class="nav-link" href="{{ url_for('index') }}#files">File history</a>
+    <nav class="nav" aria-label="Primary navigation">
+      <details class="nav-group" {% if path == '/central' or path == '/' %}open{% endif %}>
+        <summary>Dashboard</summary>
+        <a class="nav-link {% if path == '/central' %}active{% endif %}" {% if path == '/central' %}aria-current="page"{% endif %} href="{{ url_for('central_home') }}">Enterprise overview</a>
+        <a class="nav-link {% if path == '/' %}active{% endif %}" {% if path == '/' %}aria-current="page"{% endif %} href="{{ url_for('index') }}">Inbound 850 overview</a>
+      </details>
+      <details class="nav-group" {% if path.startswith('/central/transactions') or path.startswith('/central/artifacts/') or path.startswith('/central/856-monitor') or path.startswith('/files/') %}open{% endif %}>
+        <summary>EDI Monitor</summary>
+        <a class="nav-link {% if path == '/central/transactions' or path.startswith('/central/artifacts/') %}active{% endif %}" href="{{ url_for('central_transactions') }}">Transactions &amp; files</a>
+        <a class="nav-link {% if path.startswith('/central/856-monitor') %}active{% endif %}" href="{{ url_for('radius856_monitor') }}">Radius 856 processing</a>
+        <a class="nav-link {% if path.startswith('/files/') %}active{% endif %}" href="{{ url_for('index') }}#files">Inbound 850 file history</a>
+      </details>
+      <details class="nav-group" {% if path.startswith('/central/partners/') or path.startswith('/customers') %}open{% endif %}>
+        <summary>Customers &amp; Partners</summary>
+        <a class="nav-link {% if path.startswith('/central/partners/') %}active{% endif %}" href="{{ url_for('central_home') }}#partners">Trading partners</a>
+        <a class="nav-link {% if path.startswith('/customers') %}active{% endif %}" href="{{ url_for('customers') }}">Legacy 850 customers</a>
+      </details>
+      <details class="nav-group" {% if path.startswith('/central/capabilities/') %}open{% endif %}>
+        <summary>EDI Configuration</summary>
+        <a class="nav-link {% if path.startswith('/central/capabilities/') %}active{% endif %}" href="{{ url_for('central_home') }}#capabilities">Capabilities &amp; routes</a>
+      </details>
+      <details class="nav-group" {% if path.startswith('/central/mappings') or path == '/central/850-inspect' or path == '/central/856-preview' %}open{% endif %}>
+        <summary>Mapping Studio</summary>
+        <a class="nav-link {% if path.startswith('/central/mappings') %}active{% endif %}" href="{{ url_for('mapping_list') }}">Mapping profiles</a>
+        <a class="nav-link {% if path == '/central/850-inspect' %}active{% endif %}" href="{{ url_for('central_850_inspect') }}">Inspect inbound 850</a>
+        <a class="nav-link {% if path == '/central/856-preview' %}active{% endif %}" href="{{ url_for('central_856_preview') }}">Preview outbound 856</a>
+      </details>
+      <details class="nav-group" {% if path == '/inbound' or path == '/central/exceptions' or path == '/central/jobs' %}open{% endif %}>
+        <summary>EDI Operations</summary>
+        <a class="nav-link {% if path == '/inbound' %}active{% endif %}" href="{{ url_for('inbound') }}">Process inbound 850</a>
+        <a class="nav-link {% if path == '/central/exceptions' %}active{% endif %}" href="{{ url_for('central_exceptions') }}">Exceptions</a>
+        <a class="nav-link {% if path == '/central/jobs' %}active{% endif %}" href="{{ url_for('central_jobs') }}">Observer jobs</a>
+      </details>
     </nav>
     <div class="sidebar-bottom"><span class="system-dot"></span><span>Local administration</span></div>
   </aside>

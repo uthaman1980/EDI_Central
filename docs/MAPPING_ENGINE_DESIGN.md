@@ -1,0 +1,9 @@
+# Mapping engine design
+
+Current code: `mapping_engine.py` validates and applies declarative `copy`, text, constant/default, lookup, date and numeric operations. `mappings.py` stores versioned drafts, sample runs, rule/scope digests and immutable published revisions. `mapping_api.py` connects published TEST direct inbound mappings to the existing SO/SR flow. Existing supported preview inputs are CSV, JSON, an X12 004010 subset and fixed-width 850; outbound 856 preview emits CSV/JSON. `docs/MAPPING_AND_ONBOARDING.md` describes exact current contracts.
+
+Extend per document type: a parser produces a typed canonical 850 order or 856 shipment model; source fields retain provenance; scoped rules transform to an approved target model; target validation checks customer/company/plant, cardinality, units, addresses, item identity and required references; a serializer produces the exact target format. Do not force invoices, forecasts and ASNs into one universal row schema. Adapters for XML, Excel, EDIFACT and full X12 856 are unavailable until their implementations and contract tests exist.
+
+Planned shared master-data cross references need partner/capability/environment scope, effective date, active state, verified Radius target, duplicate checks, bulk import/export and audit. Missing lookups produce actionable field-level failures. A code-list lookup is not permission to create Radius master data or silently choose a default.
+
+Publishing currently requires a successful preview at the saved rule and partner-scope digests. Future activation should be a separate approval/pointer change with effective date and rollback, leaving the active revision pinned for in-flight documents. Never reinterpret a saved source with a newer revision on retry. Niagara's current TEST draft reports missing billing reference, ship date, price unit and line required date on its supplied sample; ship-to, item and unit choices also require verification before TEST submission.

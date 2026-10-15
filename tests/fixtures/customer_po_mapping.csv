@@ -1,0 +1,2 @@
+customer_po,order_date,currency,bill_to,ship_to,requested_date,po_line,customer_item,quantity,unit,unit_price,price_unit
+DEMO-PO-1001,10/14/2026,USD,BILL-DEMO,SHIP-DEMO,10/20/2026,10,DEMO-ITEM-A,1000,EACH,2.50,EACH

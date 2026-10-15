@@ -71,6 +71,8 @@ def create_app(db_path: Path, *, username=None, password=None,
     app.config["CONFIG_PATH"] = Path(config_path)
     app.config["INBOX_PATH"] = Path(inbox_path)
     app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
+    app.config["RADIUS_CLIENT"] = radius_client
+    app.config["ADDRESS_RESOLVER"] = resolver
     initialize(app.config["DB_PATH"]).close()
     connect(app.config["DB_PATH"]).close()
     csrf_token = secrets.token_urlsafe(32)
@@ -154,6 +156,9 @@ def create_app(db_path: Path, *, username=None, password=None,
             row = conn.execute("SELECT * FROM files WHERE id=?", (file_id,)).fetchone()
             if row is None:
                 abort(404)
+            mapping_reference = conn.execute("""SELECT p.id AS profile_id,p.name,r.revision,l.rules_digest
+                FROM central_mapping_file_links l JOIN central_mapping_revisions r ON r.id=l.revision_id
+                JOIN central_mapping_profiles p ON p.id=r.profile_id WHERE l.file_id=?""", (file_id,)).fetchone()
             events = [dict(item) for item in conn.execute(
                 "SELECT * FROM file_events WHERE file_id=? ORDER BY id DESC", (file_id,)).fetchall()]
             radius_records = [dict(item) for item in conn.execute(
@@ -172,6 +177,7 @@ def create_app(db_path: Path, *, username=None, password=None,
         return render_template("file_detail.html", title="File details", selected="files",
                                file=_format_row(row), events=events, radius_records=radius_records,
                                csrf_token=csrf_token,
+                               mapping_reference=dict(mapping_reference) if mapping_reference else None,
                                has_completed_po=has_completed_po, resubmission_token=uuid4().hex,
                                completed_so_options=completed_so_options,
                                allow_saved_submit=load_config(app.config["CONFIG_PATH"]).get("environment") == "TEST")
@@ -188,6 +194,7 @@ def create_app(db_path: Path, *, username=None, password=None,
             abort(400, "Web submission is restricted to Radius TEST")
         with closing(connect(app.config["DB_PATH"])) as conn:
             row = conn.execute("SELECT * FROM files WHERE id=?", (file_id,)).fetchone()
+            mapping_link = conn.execute("SELECT revision_id FROM central_mapping_file_links WHERE file_id=?", (file_id,)).fetchone()
         if row is None:
             abort(404)
         if row["environment"] != "TEST" or row["status"] not in {"previewed", "rejected", "complete"}:
@@ -230,7 +237,8 @@ def create_app(db_path: Path, *, username=None, password=None,
             result = process_file(source, meta, cfg, app.config["DB_PATH"], submit=True,
                                   client=radius_client, resolver=resolver,
                                   resubmit_mode=mode, resubmission_token=token,
-                                  target_so_number=target_so_number)
+                                  target_so_number=target_so_number,
+                                  mapping_revision_id=mapping_link["revision_id"] if mapping_link else None)
         except (ValueError, RuntimeError, OSError) as exc:
             if source.parent.name == "previews":
                 failed = app.config["INBOX_PATH"].parent / "failed"

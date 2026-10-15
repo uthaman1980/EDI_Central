@@ -25,6 +25,8 @@ def register_central_routes(app, csrf_token):
 
     from .radius856_ui import register_radius856_routes
     register_radius856_routes(app, checked, csrf_token)
+    from .mapping_ui import register_mapping_routes
+    register_mapping_routes(app, checked, csrf_token)
 
     @app.route("/central/850-inspect", methods=["GET", "POST"])
     def central_850_inspect():

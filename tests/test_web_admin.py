@@ -49,6 +49,21 @@ class WebAdminTests(unittest.TestCase):
         form.update(changes)
         return form
 
+    def test_navigation_groups_existing_routes_and_opens_current_section(self):
+        response = self.client.get('/central/mappings', headers=self.auth)
+        self.assertEqual(response.status_code, 200)
+        html = response.data.decode()
+        for heading in ('Dashboard', 'EDI Monitor', 'Customers &amp; Partners',
+                        'EDI Configuration', 'Mapping Studio', 'EDI Operations'):
+            self.assertIn(f'<summary>{heading}</summary>', html)
+        self.assertRegex(html, r'<details class="nav-group" open>\s*<summary>Mapping Studio</summary>')
+        for route in ('/central/transactions', '/central/856-monitor', '/central/mappings',
+                      '/central/850-inspect', '/central/856-preview', '/central/exceptions',
+                      '/central/jobs', '/inbound', '/customers'):
+            self.assertIn(f'href="{route}"', html)
+        self.assertIn('href="/central#partners"', html)
+        self.assertIn('href="/central#capabilities"', html)
+
     def test_save_customer_and_submit_van_to_mock_test_radius(self):
         self.assertEqual(self.client.get("/customers").status_code, 401)
         saved = self.client.post("/customers/new", data=self.profile_form(), headers=self.auth)

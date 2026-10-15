@@ -3,7 +3,9 @@ import json
 import tempfile
 import unittest
 from contextlib import closing
+from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 from niagara_edi.edi import EDIError, parse_850
 from niagara_edi.service import DuplicateOrder, initialize, process_file
@@ -33,6 +35,9 @@ class Radius:
 
 class FlowTests(unittest.TestCase):
     def setUp(self):
+        clock = patch('niagara_edi.service.current_date', return_value=date(2026, 10, 14))
+        clock.start()
+        self.addCleanup(clock.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         base = Path(self.tmp.name)

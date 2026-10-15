@@ -1,5 +1,7 @@
 # Niagara Water inbound 850 onboarding
 
+**Direct customer clarification:** the user confirmed that this route is direct from the customer, not a VAN feed, and wants mapped data sent to the existing Radius SO/SR API without an intermediate 850 file. The inbound capability is now a DIRECT draft. **Mapping & master data** includes a Niagara TEST API draft using the supplied TXT layout, with verified USD fallback and terms-code lookup; four missing fields still block validation. A separate outbound shipment-reference CSV mapping is a LIVE preview-only draft. Neither mapping was published or used to send an order. See [MAPPING_AND_ONBOARDING.md](MAPPING_AND_ONBOARDING.md).
+
 The user supplied `NIA85080470250957.txt` on 2026-10-14 and stated that PepsiCo and Niagara PO files arrive from SFTP with customer-initial filename prefixes. The user then confirmed destination Radius customer `NIA01` and SFTP landing folder `\\P-RAD-FSM-AP\Radius\EDI\NIA01\850`. The folder is accessible from this machine and had no TXT files at discovery. Do not move files from this feed or enable posting before ownership, complete mappings, and handling are confirmed.
 
 The original customer file and its business values are retained locally and excluded from Git. Identifiers and pricing below are redacted.

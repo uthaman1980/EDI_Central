@@ -1,0 +1,7 @@
+{% extends "admin_base.html" %}
+{% block title %}Radius API preview{% endblock %}
+{% block breadcrumb %}Direct customer → Radius API{% endblock %}
+{% block content %}
+<div class="heading-row"><div><div class="eyebrow">TEST ORDER PREVIEW</div><h1>Review Radius Sales Order payload</h1><p>{{ profile.name }} · Version {{ profile.revision }} · {{ profile.shipping_request_mode }} Shipping Requests</p></div><a class="refresh-button" href="{{ url_for('mapping_editor',profile_id=profile.id,revision=profile.revision) }}">Back to mapping</a></div>
+<section class="panel admin-panel"><p>The customer file was mapped directly to the order service. Address references were resolved through the existing TEST lookup. No Radius POST has been sent.</p><pre>{{ outcome|tojson(indent=2) }}</pre><form method="post" action="{{ url_for('submit_saved_file',file_id=outcome[0].file_id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="primary-button">Submit reviewed order to Radius TEST</button></form><p>The existing creation service creates the SO first, then Shipping Requests, and retains the mapping version, source file, responses and resulting numbers.</p></section>
+{% endblock %}

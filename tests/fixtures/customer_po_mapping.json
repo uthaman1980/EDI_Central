@@ -1,0 +1,16 @@
+[
+  {
+    "customer_po": "DEMO-PO-1001",
+    "order_date": "10/14/2026",
+    "currency": "USD",
+    "bill_to": "BILL-DEMO",
+    "ship_to": "SHIP-DEMO",
+    "requested_date": "10/20/2026",
+    "po_line": "10",
+    "customer_item": "DEMO-ITEM-A",
+    "quantity": "1000",
+    "unit": "EACH",
+    "unit_price": "2.50",
+    "price_unit": "EACH"
+  }
+]
